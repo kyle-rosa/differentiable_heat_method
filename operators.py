@@ -1,5 +1,6 @@
 import torch
 from itertools import product
+import igl
 
 
 def cross_product(U, V):
@@ -7,6 +8,18 @@ def cross_product(U, V):
         U[..., [1, 2, 0]].mul(V[..., [2, 0, 1]])
         .sub(U[..., [2, 0, 1]].mul(V[..., [1, 2, 0]]))
     )
+
+
+def make_intrinsic_triangulation(edges_lengths2, faces):
+    delaunay_array = igl.intrinsic_delaunay_triangulation(
+        edges_lengths2.double().pow(1 / 2).cpu().detach().numpy(),
+        faces.cpu().detach().numpy()
+    )[1]
+    delaunay = torch.from_numpy(delaunay_array).to(edges_lengths2.device).long()
+    # Remove faces with duplicated vertices:
+    nondegenerate_faces = delaunay[..., [1, 2, 0]].eq(delaunay).any(dim=-1).logical_not()
+    nondegenerate_delaunay = delaunay[nondegenerate_faces, :]
+    return nondegenerate_delaunay
 
 
 def make_mesh_geometry(edges):
@@ -43,29 +56,18 @@ def make_face_gradients(d_verts, features, face_areas, faces):
     )
 
 
-def differential(verts_features, faces):
+def make_differential(verts_features, faces):
     faces_verts = verts_features[faces]  # (F, 3, 3)
     d_verts = faces_verts[..., [2, 0, 1], :].sub(faces_verts[..., [1, 2, 0], :])  # (F, 3, 3)
     return d_verts
 
 
-def sum_cell_values_(cell_values, faces, out):
+def sum_cell_values(num_verts, cell_values, faces):
     """
         Aggregate the (F, 3) cell_values to the vertices, output has shape (V,).
     """
-    return out.mul(0.).index_add_(
-        dim=0, 
-        index=faces.reshape(-1), 
-        source=cell_values.reshape(-1)
-    )
-
-def sum_cell_values(cell_values, faces):
-    """
-        Aggregate the (F, 3) cell_values to the vertices, output has shape (V,).
-    """
-    V = faces.max().add(1).item()  # C = cell_values.shape[-1]
     return torch.zeros(
-        (V, ),
+        (num_verts, ),
         device=cell_values.device,
         dtype=cell_values.dtype,
     ).index_add_(
@@ -95,51 +97,31 @@ _local_indices = make_local_indices(device=torch.device('cuda'))
 _local_cotan_weights = make_local_cotan_weights(device=torch.device('cuda'), dtype=torch.float64)
 
 
-def make_conformal_laplacian_kernel(cots, faces, local_cotan_weights=_local_cotan_weights):
-    V = faces.max().add(1).item()
+def make_conformal_laplacian_kernel(num_verts, cots, faces, local_cotan_weights=_local_cotan_weights):
     x = faces[:, _local_indices]
     indexadd_laplacian_kernel = (
-        torch.zeros((V, V), device=cots.device, dtype=cots.dtype)
+        torch.zeros((num_verts, num_verts), device=cots.device, dtype=cots.dtype)
         .reshape(-1)
         .index_add_(
             dim=0,
-            index=(x[..., 0] * V + x[..., 1]).reshape(-1),
+            index=(x[..., 0] * num_verts + x[..., 1]).reshape(-1),
             source=torch.einsum("ijc, fc -> fij", local_cotan_weights, cots).reshape(-1),
         )
-        .reshape(V, V)
+        .reshape(num_verts, num_verts)
         .div(2)
     )
     return indexadd_laplacian_kernel
 
 
-def make_conformal_laplacian(features, cots, faces, local_cotan_weights):
-    index = faces[:, _local_indices].reshape(-1, 2).T
-    values = torch.einsum("ijc, fc -> fij", local_cotan_weights, cots).reshape(-1, 1)
-    conformal_laplacian = (
-        torch.zeros_like(features)
-        .index_add_(
-            dim=0, 
-            index=index[0, :], 
-            source=features[index[1, :], :].multiply(values)
-        ).div(2)
-    )
-    return conformal_laplacian
-
-
-def make_laplacian(conformal_laplacian, vertex_areas):
-    return conformal_laplacian.div(vertex_areas[..., None])
-
-
 def diffuse_features_backward_euler(vertex_areas, conformal_laplacian_kernel, verts_features, tau):
     return torch.linalg.solve(
         conformal_laplacian_kernel.multiply(tau).add(vertex_areas.diag()),
-        verts_features.multiply(vertex_areas[..., None]),
+        verts_features.multiply(vertex_areas[..., None])
     )
 
-def make_integrated_divergence(d_verts, face_gradients, cots, faces):
-    V = faces.max().add(1).item()
-    C = face_gradients.shape[-2]
-    idxs = faces.view(-1)[None]
+def make_integrated_divergence(num_verts, d_verts, face_gradients, cots, faces):
+    num_features = face_gradients.shape[-2]
+    idxs = faces.view(-1)
     vals = (
         d_verts[..., None, :]
         .multiply(face_gradients[..., None, :, :])
@@ -147,29 +129,36 @@ def make_integrated_divergence(d_verts, face_gradients, cots, faces):
         .multiply(cots[..., None])[..., [[1, 2], [2, 0], [0, 1]], :]
         .diff(n=1, dim=-2)[..., 0, :]
         .div(2)
-    ).view(-1, C)
-    buffer = (
-        torch.zeros((V, C), device=cots.device, dtype=cots.dtype)
-        .index_add_(
-            dim=0,
-            index=idxs[0],
-            source=vals,
-        )
+    ).view(-1, num_features)
+    return (
+        torch.zeros((num_verts, num_features), device=cots.device, dtype=cots.dtype)
+        .index_add_(dim=0, index=idxs, source=vals)
     )
-    return buffer 
 
 
-def make_geodesic_distances(verts, faces_intrinsic, verts_features):
-    d_verts_intrinsic = differential(verts, faces_intrinsic)
+def make_geodesic_distances(verts, faces_extrinsic, verts_features):
+    # Process geometry:
+    num_verts = verts.size(0)
+    ## Calculate intrinsic triangulation:
+    edge_lengths2_extrinsic = make_differential(verts, faces_extrinsic).pow(2).sum(dim=-1)
+    faces_intrinsic = make_intrinsic_triangulation(edge_lengths2_extrinsic, faces_extrinsic)
+    ## Calculate geometric weights and operators:
+    d_verts_intrinsic = make_differential(verts, faces_intrinsic)
     (edge_lengths2_intrinsic, cell_areas, cots) = make_mesh_geometry(d_verts_intrinsic)
     face_areas = cell_areas.sum(dim=-1)
-    vertex_areas = sum_cell_values(cell_areas, faces_intrinsic)
-    conformal_laplacian_kernel = make_conformal_laplacian_kernel(cots, faces_intrinsic)
+    vertex_areas = sum_cell_values(num_verts, cell_areas, faces_intrinsic)
+    conformal_laplacian_kernel = make_conformal_laplacian_kernel(num_verts, cots, faces_intrinsic)
+    ## Calculate diffusion parameter:
     tau = edge_lengths2_intrinsic.mean()
+
+    # Apply heat meathod:
+    ## Diffuse features:
     diffused_verts_features = diffuse_features_backward_euler(vertex_areas, conformal_laplacian_kernel, verts_features, tau)
+    ## Calculate normalised gradient field:
     diffused_verts_features_grad = make_face_gradients(d_verts_intrinsic, diffused_verts_features, face_areas, faces_intrinsic)
     normalised_grad_field = torch.nn.functional.normalize(diffused_verts_features_grad, p=2, dim=-1, eps=0.)
-    integrated_divergence = make_integrated_divergence(d_verts_intrinsic, normalised_grad_field, cots, faces_intrinsic).to_dense()
+    ## Integrate divergence of normalised gradient field:
+    integrated_divergence = make_integrated_divergence(num_verts, d_verts_intrinsic, normalised_grad_field, cots, faces_intrinsic).to_dense()
     distance_solution = torch.linalg.solve(conformal_laplacian_kernel, integrated_divergence)
     geodesic_distance = distance_solution.subtract(distance_solution.min())
     return geodesic_distance
