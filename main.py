@@ -18,11 +18,11 @@ if __name__=='__main__':
 
         (verts, faces_extrinsic) = open_obj_file(input_filepath, device=device, dtype=dtype)
         verts_features = torch.zeros((verts.shape[0], 1), device=device, dtype=dtype)
-        verts_features[source_verts] = 1
+        verts_features[source_verts] = 1.0
 
         verts = torch.nn.Parameter(verts)
-        geodesic_distance = make_geodesic_distances(verts, faces_extrinsic, verts_features)
-        geodesic_distance.sum().backward()
+        vertex_areas, geodesic_distance = make_geodesic_distances(verts, faces_extrinsic, verts_features)
+        (geodesic_distance * vertex_areas).sum().backward()
 
         save_gradient_viewer(mesh_name, source_vert, verts, faces_extrinsic, verts.grad)
         save_distance_viewer(mesh_name, source_vert, verts, faces_extrinsic, geodesic_distance)

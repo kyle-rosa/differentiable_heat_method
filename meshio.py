@@ -10,8 +10,6 @@ def open_obj_file(fp, device=torch.device('cpu'), dtype=torch.float):
         Assumes fairly strict formatting:
         - No line delimeters except \ n (without space).
         - All vertices have same number of components (assumed 3).
-        - 
-
     """
     print(f"Opening {(fp.split('/')[-1])}... ", end='')
     verts, faces = [], []
@@ -27,7 +25,7 @@ def open_obj_file(fp, device=torch.device('cpu'), dtype=torch.float):
     verts = torch.tensor(verts, device=device, dtype=dtype)
     faces = torch.tensor(faces, device=device, dtype=torch.long).subtract(1)
     print(f'found {len(verts)} vertices and {len(faces)} faces.')
-    print(verts, faces)
+    # print(verts, faces)
     return (verts, faces)
 
 

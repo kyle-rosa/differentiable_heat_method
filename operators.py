@@ -12,8 +12,8 @@ def cross_product(U, V):
 
 def make_intrinsic_triangulation(edges_lengths2, faces):
     delaunay_array = igl.intrinsic_delaunay_triangulation(
-        edges_lengths2.double().pow(1 / 2).cpu().detach().numpy(),
-        faces.cpu().detach().numpy()
+        edges_lengths2.double().pow(1 / 2).detach().cpu().numpy(),
+        faces.cpu().numpy()
     )[1]
     delaunay = torch.from_numpy(delaunay_array).to(edges_lengths2.device).long()
     # Remove faces with duplicated vertices:
@@ -95,8 +95,6 @@ def make_local_indices(device="cpu"):
 
 _local_indices = make_local_indices(device=torch.device('cuda'))
 _local_cotan_weights = make_local_cotan_weights(device=torch.device('cuda'), dtype=torch.float64)
-
-
 def make_conformal_laplacian_kernel(num_verts, cots, faces, local_cotan_weights=_local_cotan_weights):
     x = faces[:, _local_indices]
     indexadd_laplacian_kernel = (
@@ -156,9 +154,9 @@ def make_geodesic_distances(verts, faces_extrinsic, verts_features):
     diffused_verts_features = diffuse_features_backward_euler(vertex_areas, conformal_laplacian_kernel, verts_features, tau)
     ## Calculate normalised gradient field:
     diffused_verts_features_grad = make_face_gradients(d_verts_intrinsic, diffused_verts_features, face_areas, faces_intrinsic)
-    normalised_grad_field = torch.nn.functional.normalize(diffused_verts_features_grad, p=2, dim=-1, eps=0.)
+    normalised_grad_field = torch.nn.functional.normalize(diffused_verts_features_grad, p=2, dim=-1)
     ## Integrate divergence of normalised gradient field:
     integrated_divergence = make_integrated_divergence(num_verts, d_verts_intrinsic, normalised_grad_field, cots, faces_intrinsic).to_dense()
     distance_solution = torch.linalg.solve(conformal_laplacian_kernel, integrated_divergence)
-    geodesic_distance = distance_solution.subtract(distance_solution.min())
-    return geodesic_distance
+    geodesic_distance = distance_solution.subtract(distance_solution.min(dim=-2, keepdim=True).values)
+    return vertex_areas, geodesic_distance
