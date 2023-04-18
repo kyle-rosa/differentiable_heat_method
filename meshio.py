@@ -1,10 +1,16 @@
+import os
 from pathlib import Path
 
 import plotly.graph_objects as go
 import torch
+from torch import Tensor
 
 
-def open_obj_file(fp, device=torch.device('cpu'), dtype=torch.float):
+def open_obj_file(
+    fp: (str | os.PathLike),
+    device=torch.device('cpu'),
+    dtype=torch.float
+) -> tuple[Tensor, Tensor]:
     """
         Opens simple WaveFront .obj files. 
         Extracts vertex coordinates and face data, but ignores textures.
@@ -29,7 +35,13 @@ def open_obj_file(fp, device=torch.device('cpu'), dtype=torch.float):
     return (verts, faces)
 
 
-def save_distance_viewer(mesh_name, source_vert, verts, faces, geodesic_distance):
+def save_distance_viewer(
+    mesh_name: str,
+    source_vert: int,
+    verts: Tensor,
+    faces: Tensor,
+    geodesic_distance: Tensor
+) -> None:
     verts_array = verts.detach().cpu().numpy()
     faces_array = faces.detach().cpu().numpy()
     vert_features = geodesic_distance.sub(geodesic_distance.min(dim=0).values)
@@ -49,7 +61,13 @@ def save_distance_viewer(mesh_name, source_vert, verts, faces, geodesic_distance
     ).write_html(Path() / 'output' / 'distance_field' / f'{mesh_name}-vertex_{source_vert}.html')
 
 
-def save_gradient_viewer(mesh_name, source_vert, verts, faces, verts_cmap):
+def save_gradient_viewer(
+    mesh_name: str,
+    source_vert: int,
+    verts: Tensor,
+    faces: Tensor,
+    verts_cmap: Tensor
+) -> None:
     verts_array = verts.detach().cpu().numpy()
     faces_array = faces.detach().cpu().numpy()
     verts_cmap = torch.nn.functional.normalize(verts_cmap, p=2, dim=-1)

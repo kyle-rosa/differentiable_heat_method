@@ -2,16 +2,23 @@ from itertools import product
 
 import igl
 import torch
+from torch import Tensor
 
 
-def cross_product(U, V):
+def cross_product(
+    U: Tensor,
+    V: Tensor
+) -> Tensor:
     return (
         U[..., [1, 2, 0]].mul(V[..., [2, 0, 1]])
         .sub(U[..., [2, 0, 1]].mul(V[..., [1, 2, 0]]))
     )
 
 
-def make_intrinsic_triangulation(edges_lengths2, faces):
+def make_intrinsic_triangulation(
+    edges_lengths2: Tensor,
+    faces: Tensor
+) -> Tensor:
     delaunay_array = igl.intrinsic_delaunay_triangulation(
         edges_lengths2.double().pow(1 / 2).detach().cpu().numpy(),
         faces.cpu().numpy()
@@ -23,8 +30,10 @@ def make_intrinsic_triangulation(edges_lengths2, faces):
     return nondegenerate_delaunay
 
 
-def make_mesh_geometry(edges):
-    """
+def make_mesh_geometry(
+    edges: Tensor
+) -> tuple[Tensor, Tensor, Tensor]:
+    """.
     Given the tangent half-edge vectors with shape (F, 3, 3),
     returns:
     - the squared length of each edge, shape (F, 3),
@@ -42,7 +51,12 @@ def make_mesh_geometry(edges):
     return (edge_lengths2, cell_areas, cots)
 
 
-def make_face_gradients(d_verts, features, face_areas, faces):
+def make_face_gradients(
+    d_verts: Tensor,
+    features: Tensor,
+    face_areas: Tensor,
+    faces: Tensor
+) -> Tensor:
     """
         d_verts: (F, 3, 3) float
         features: (V, C) float
@@ -58,13 +72,19 @@ def make_face_gradients(d_verts, features, face_areas, faces):
     )
 
 
-def make_differential(verts_features, faces):
-    faces_verts = verts_features[faces]  # (F, 3, 3)
-    d_verts = faces_verts[..., [2, 0, 1], :].sub(faces_verts[..., [1, 2, 0], :])  # (F, 3, 3)
-    return d_verts
+def make_differential(
+    verts_features: Tensor,
+    faces: Tensor
+) -> Tensor:
+    faces_verts = verts_features[faces, :]
+    return faces_verts[..., [2, 0, 1], :].sub(faces_verts[..., [1, 2, 0], :]) 
 
 
-def sum_cell_values(num_verts, cell_vals, faces):
+def sum_cell_values(
+    num_verts: Tensor,
+    cell_vals: Tensor,
+    faces: Tensor
+) -> Tensor:
     """
         Aggregate the (F, 3) cell_values to the vertices, output has shape (V,).
     """
@@ -74,23 +94,29 @@ def sum_cell_values(num_verts, cell_vals, faces):
     )
 
 
-def make_local_cotan_weights(device="cpu", dtype=torch.float):
+def make_local_cotan_weights(
+    device=torch.device('cpu'),
+    dtype=torch.float
+) -> Tensor:
     local_cotan_kernel = torch.zeros((3, 3, 3), device=device, dtype=dtype)
-    local_cotan_kernel[[0, 1, 2], [0, 1, 2], [1, 2, 0]] = 1
-    local_cotan_kernel[[0, 1, 2], [0, 1, 2], [2, 0, 1]] = 1
-    local_cotan_kernel[[0, 1, 2], [1, 2, 0], [2, 0, 1]] = -1
-    local_cotan_kernel[[0, 1, 2], [2, 0, 1], [1, 2, 0]] = -1
+    local_cotan_kernel[[0, 1, 2], [0, 1, 2], [1, 2, 0]] = 1.0
+    local_cotan_kernel[[0, 1, 2], [0, 1, 2], [2, 0, 1]] = 1.0
+    local_cotan_kernel[[0, 1, 2], [1, 2, 0], [2, 0, 1]] = -1.0
+    local_cotan_kernel[[0, 1, 2], [2, 0, 1], [1, 2, 0]] = -1.0
     return local_cotan_kernel
 
 
+def make_local_indices(
+    device=torch.device('cpu')
+) -> Tensor:
+    return torch.tensor(list(product(*[range(3)] * 2)), device=device).view(3, 3, 2)
 
-def make_local_indices(device="cpu"):
-    return torch.tensor(
-        list(product(*[range(3)] * 2)), device=device, dtype=torch.long
-    ).view(3, 3, 2)
 
-
-def make_conformal_laplacian_kernel(num_verts, cots, faces):
+def make_conformal_laplacian_kernel(
+    num_verts: int,
+    cots: Tensor,
+    faces: Tensor
+) -> Tensor:
     local_cotan_weights = make_local_cotan_weights(device=cots.device, dtype=cots.dtype)
     local_indices = make_local_indices(device=cots.device)
     x = faces[:, local_indices]
@@ -108,13 +134,25 @@ def make_conformal_laplacian_kernel(num_verts, cots, faces):
     return indexadd_laplacian_kernel
 
 
-def diffuse_features_backward_euler(vertex_areas, conformal_laplacian_kernel, verts_features, tau):
+def diffuse_features_backward_euler(
+    vertex_areas: Tensor,
+    conformal_laplacian_kernel: Tensor,
+    verts_features: Tensor,
+    tau: Tensor
+) -> Tensor:
     return torch.linalg.solve(
         conformal_laplacian_kernel.multiply(tau).add(vertex_areas.diag()),
         verts_features.multiply(vertex_areas[..., None])
     )
 
-def make_integrated_divergence(num_verts, d_verts, face_gradients, cots, faces):
+
+def make_integrated_divergence(
+    num_verts: Tensor,
+    d_verts: Tensor,
+    face_gradients: Tensor,
+    cots: Tensor,
+    faces: Tensor
+) -> Tensor:
     num_features = face_gradients.shape[-2]
     idxs = faces.view(-1)
     vals = (
@@ -124,14 +162,19 @@ def make_integrated_divergence(num_verts, d_verts, face_gradients, cots, faces):
         .multiply(cots[..., None])[..., [[1, 2], [2, 0], [0, 1]], :]
         .diff(n=1, dim=-2)[..., 0, :]
         .div(2)
-    ).view(-1, num_features)
+        .view(-1, num_features)
+    )
     return (
         torch.zeros((num_verts, num_features), device=cots.device, dtype=cots.dtype)
         .index_add_(dim=0, index=idxs, source=vals)
     )
 
 
-def make_geodesic_distances(verts, faces_extrinsic, verts_features):
+def make_geodesic_distances(
+    verts: Tensor,
+    faces_extrinsic: Tensor,
+    verts_features: Tensor
+) -> tuple[Tensor, Tensor]:
     # Process geometry:
     num_verts = verts.size(0)
     ## Calculate intrinsic triangulation:
@@ -156,4 +199,4 @@ def make_geodesic_distances(verts, faces_extrinsic, verts_features):
     integrated_divergence = make_integrated_divergence(num_verts, d_verts_intrinsic, normalised_grad_field, cots, faces_intrinsic).to_dense()
     distance_solution = torch.linalg.solve(conformal_laplacian_kernel, integrated_divergence)
     geodesic_distance = distance_solution.subtract(distance_solution.min(dim=-2, keepdim=True).values)
-    return vertex_areas, geodesic_distance
+    return (vertex_areas, geodesic_distance)
