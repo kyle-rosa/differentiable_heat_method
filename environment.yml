@@ -1,0 +1,12 @@
+name: diff_geodesics
+channels:
+  - conda-forge
+  - nvidia
+  - pytorch-nightly
+dependencies:
+  - nvidia::cudatoolkit=11.7
+  - python=3.10
+  - pytorch=2.1
+  - pytorch-cuda=11.7
+  - plotly=5.14
+  - igl=2.2
