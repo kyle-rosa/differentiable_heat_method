@@ -1,10 +1,10 @@
-from pathlib import Path
 import glob
-import torch
-import torch.nn.functional as F
-from operators import make_geodesic_distances
-from meshio import open_obj_file, save_distance_viewer, save_gradient_viewer
+from pathlib import Path
 
+import torch
+
+from meshio import open_obj_file, save_distance_viewer, save_gradient_viewer
+from operators import make_geodesic_distances
 
 if __name__=='__main__':
     device = torch.device('cuda')
@@ -17,7 +17,8 @@ if __name__=='__main__':
         input_filepath = f"meshes/{mesh_name}.obj"
 
         (verts, faces_extrinsic) = open_obj_file(input_filepath, device=device, dtype=dtype)
-        verts_features = torch.zeros((verts.shape[0], 1), device=device, dtype=dtype)
+        num_verts = verts.size(0)
+        verts_features = torch.zeros((num_verts, 1), device=device, dtype=dtype)
         verts_features[source_verts] = 1.0
 
         verts = torch.nn.Parameter(verts)

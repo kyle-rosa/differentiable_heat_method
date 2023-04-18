@@ -1,6 +1,7 @@
 from pathlib import Path
-import torch
+
 import plotly.graph_objects as go
+import torch
 
 
 def open_obj_file(fp, device=torch.device('cpu'), dtype=torch.float):
@@ -25,7 +26,6 @@ def open_obj_file(fp, device=torch.device('cpu'), dtype=torch.float):
     verts = torch.tensor(verts, device=device, dtype=dtype)
     faces = torch.tensor(faces, device=device, dtype=torch.long).subtract(1)
     print(f'found {len(verts)} vertices and {len(faces)} faces.')
-    # print(verts, faces)
     return (verts, faces)
 
 
