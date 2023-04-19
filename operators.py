@@ -19,6 +19,16 @@ def make_intrinsic_triangulation(
     edges_lengths2: Tensor,
     faces: Tensor
 ) -> Tensor:
+    """
+    Constructs an intrinsic Delaunay triangulation of a mesh given its edge lengths and faces.
+
+    Args:
+        edges_lengths2 (Tensor): A tensor of squared edge lengths of the mesh.
+        faces (Tensor): A tensor of vertex indices for each face of the mesh.
+
+    Returns:
+        Tensor: A tensor representing the intrinsic Delaunay triangulation of the mesh, with duplicated vertices removed.
+    """
     delaunay_array = igl.intrinsic_delaunay_triangulation(
         edges_lengths2.double().pow(1 / 2).detach().cpu().numpy(),
         faces.cpu().numpy()
@@ -33,12 +43,16 @@ def make_intrinsic_triangulation(
 def make_mesh_geometry(
     edges: Tensor
 ) -> tuple[Tensor, Tensor, Tensor]:
-    """.
-    Given the tangent half-edge vectors with shape (F, 3, 3),
-    returns:
-    - the squared length of each edge, shape (F, 3),
-    - the area of intersections between faces and vertex dual cells, shape (F, 3),
-    - the cotangents of the angles at each corner of each face, shape (F, 3)
+    """
+    Computes geometric properties of a triangular mesh given its tangent half-edge vectors.
+
+    Args:
+        edges (Tensor): A tensor of tangent half-edge vectors with shape (F, 3, 3).
+
+    Returns:
+        tuple[Tensor, Tensor, Tensor]: A tuple containing the squared length of each edge with shape (F, 3),
+        the area of intersections between faces and vertex dual cells with shape (F, 3),
+        and the cotangents of the angles at each corner of each face with shape (F, 3).
     """
     edge_lengths2 = edges.pow(2).sum(dim=-1)
     dots = -edges[..., [1, 2, 0], :].multiply(edges[..., [2, 0, 1], :]).sum(dim=-1)
@@ -58,9 +72,16 @@ def make_face_gradients(
     faces: Tensor
 ) -> Tensor:
     """
-        d_verts: (F, 3, 3) float
-        features: (V, C) float
-        face_gradients: (F, C, 3) float
+    Computes gradients of the given features of a triangular mesh.
+
+    Args:
+        d_verts (Tensor): A tensor of tangent half-edge vectors with shape (F, 3, 3).
+        features (Tensor): A tensor of vertex features with shape (V, C).
+        face_areas (Tensor): A tensor of face areas with shape (F,).
+        faces (Tensor): A tensor of vertex indices for each face of the mesh with shape (F, 3).
+
+    Returns:
+        Tensor: A tensor of gradients of the features, with shape (F, C, 3).
     """
     normals = cross_product(d_verts[..., [1, 2, 0], :], d_verts[..., [2, 0, 1], :])
     tangents = cross_product(normals, d_verts)
@@ -76,6 +97,16 @@ def make_differential(
     verts_features: Tensor,
     faces: Tensor
 ) -> Tensor:
+    """
+    Computes the differential operator for a triangular mesh.
+
+    Args:
+        verts_features (Tensor): A tensor of vertex features with shape (V, C).
+        faces (Tensor): A tensor of vertex indices for each face of the mesh with shape (F, 3).
+
+    Returns:
+        Tensor: A tensor of differential operator values with shape (F, 3, C).
+    """
     faces_verts = verts_features[faces, :]
     return faces_verts[..., [2, 0, 1], :].sub(faces_verts[..., [1, 2, 0], :]) 
 
@@ -86,7 +117,15 @@ def sum_cell_values(
     faces: Tensor
 ) -> Tensor:
     """
-        Aggregate the (F, 3) cell_values to the vertices, output has shape (V,).
+    Aggregates the values of cells to their corresponding vertices.
+
+    Args:
+        num_verts (Tensor): The number of vertices in the mesh.
+        cell_vals (Tensor): The values of cells in the mesh, with shape (F, 3).
+        faces (Tensor): A tensor of vertex indices for each face of the mesh with shape (F, 3).
+
+    Returns:
+        Tensor: A tensor of vertex values with shape (V,).
     """
     return (
         torch.zeros((num_verts,), device=cell_vals.device, dtype=cell_vals.dtype)
@@ -95,8 +134,8 @@ def sum_cell_values(
 
 
 def make_local_cotan_weights(
-    device=torch.device('cpu'),
-    dtype=torch.float
+    device: torch.device = torch.device('cpu'),
+    dtype: torch.dtype = torch.float
 ) -> Tensor:
     local_cotan_kernel = torch.zeros((3, 3, 3), device=device, dtype=dtype)
     local_cotan_kernel[[0, 1, 2], [0, 1, 2], [1, 2, 0]] = 1.0
@@ -106,21 +145,25 @@ def make_local_cotan_weights(
     return local_cotan_kernel
 
 
-def make_local_indices(
-    device=torch.device('cpu')
-) -> Tensor:
-    return torch.tensor(list(product(*[range(3)] * 2)), device=device).view(3, 3, 2)
-
-
 def make_conformal_laplacian_kernel(
     num_verts: int,
     cots: Tensor,
     faces: Tensor
 ) -> Tensor:
+    """
+    Computes and returns the conformal Laplacian kernel given the cotangent weights and face indices.
+    
+    Args:
+    - num_verts (int): number of vertices
+    - cots (Tensor): tensor of size (F, 3) representing the cotangent weights for each face
+    - faces (Tensor): tensor of size (F, 3) representing the vertex indices for each face
+    
+    Returns:
+    - Tensor: tensor of size (num_verts, num_verts) representing the conformal Laplacian kernel
+    """
     local_cotan_weights = make_local_cotan_weights(device=cots.device, dtype=cots.dtype)
-    local_indices = make_local_indices(device=cots.device)
-    x = faces[:, local_indices]
-    indexadd_laplacian_kernel = (
+    x = faces[:, [[[0, 0], [0, 1], [0, 2]], [[1, 0], [1, 1], [1, 2]], [[2, 0],[2, 1], [2, 2]]]]
+    return (
         torch.zeros((num_verts, num_verts), device=cots.device, dtype=cots.dtype)
         .reshape(-1)
         .index_add_(
@@ -131,7 +174,6 @@ def make_conformal_laplacian_kernel(
         .reshape(num_verts, num_verts)
         .div(2)
     )
-    return indexadd_laplacian_kernel
 
 
 def diffuse_features_backward_euler(
@@ -140,6 +182,18 @@ def diffuse_features_backward_euler(
     verts_features: Tensor,
     tau: Tensor
 ) -> Tensor:
+    """
+    Compute the diffusion of vertex features using the backward Euler method.
+
+    Args:
+        vertex_areas (Tensor): Vertex areas with shape (V,).
+        conformal_laplacian_kernel (Tensor): Conformal Laplacian kernel with shape (V, V).
+        verts_features (Tensor): Vertex features with shape (V, C).
+        tau (Tensor): Time step.
+
+    Returns:
+        The updated vertex features after diffusion with shape (V, C).
+    """
     return torch.linalg.solve(
         conformal_laplacian_kernel.multiply(tau).add(vertex_areas.diag()),
         verts_features.multiply(vertex_areas[..., None])
@@ -153,6 +207,19 @@ def make_integrated_divergence(
     cots: Tensor,
     faces: Tensor
 ) -> Tensor:
+    """
+    Calculates the integrated divergence of the face gradients across vertices using cotangents.
+    
+    Args:
+    - num_verts: A tensor representing the number of vertices in the mesh.
+    - d_verts: A tensor of shape (F, 3, 3) representing the differences between vertices of each face.
+    - face_gradients: A tensor of shape (F, C, 3) representing the gradients of the features for each face.
+    - cots: A tensor of shape (F, 3) representing the cotangents of each angle of each face.
+    - faces: A tensor of shape (F, 3) representing the vertex indices of each face.
+    
+    Returns:
+    - A tensor of shape (V, C) representing the integrated divergence of the face gradients across vertices.
+    """
     num_features = face_gradients.shape[-2]
     idxs = faces.view(-1)
     vals = (
@@ -175,6 +242,21 @@ def make_geodesic_distances(
     faces_extrinsic: Tensor,
     verts_features: Tensor
 ) -> tuple[Tensor, Tensor]:
+    """
+    Computes geodesic distances on a triangular mesh using the heat method.
+
+    Args:
+    verts (Tensor): A tensor of shape (num_verts, 3) representing the 3D coordinates of each vertex in the mesh.
+    faces_extrinsic (Tensor): A tensor of shape (num_faces, 3) representing the indices of the vertices in each face of the mesh.
+    verts_features (Tensor): A tensor of shape (num_verts, num_features) containing the feature values at each vertex of the mesh.
+
+    Returns:
+    A tuple containing two tensors:
+    - vertex_areas (Tensor): A tensor of shape (num_verts,) containing the area of each vertex in the mesh.
+    - geodesic_distance (Tensor): A tensor of shape (num_verts,) containing the geodesic distance of each vertex in the mesh.
+
+    The function first calculates the intrinsic triangulation of the mesh and the geometric weights and operators needed to compute geodesic distances using the heat method. It then applies the heat method by diffusing the input features using the backward Euler method, calculating the normalised gradient field and integrating the divergence of the normalised gradient field. Finally, it solves the Poisson equation to obtain the geodesic distances and returns the area of each vertex along with the resulting distances.
+    """
     # Process geometry:
     num_verts = verts.size(0)
     ## Calculate intrinsic triangulation:

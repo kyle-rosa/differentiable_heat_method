@@ -12,11 +12,15 @@ def open_obj_file(
     dtype=torch.float
 ) -> tuple[Tensor, Tensor]:
     """
-        Opens simple WaveFront .obj files. 
-        Extracts vertex coordinates and face data, but ignores textures.
-        Assumes fairly strict formatting:
-        - No line delimeters except \ n (without space).
-        - All vertices have same number of components (assumed 3).
+    Opens a WaveFront .obj file and extracts vertex coordinates and face data.
+    
+    Args:
+    - fp (str | os.PathLike): The file path to the .obj file to open.
+    - device (torch.device): The device to use for the returned tensors. Defaults to 'cpu'.
+    - dtype (torch.dtype): The data type to use for the returned tensors. Defaults to torch.float.
+    
+    Returns:
+    - tuple[Tensor, Tensor]: A tuple of two tensors containing the vertex coordinates and face data.
     """
     print(f"Opening {(fp.split('/')[-1])}... ", end='')
     verts, faces = [], []
@@ -42,6 +46,21 @@ def save_distance_viewer(
     faces: Tensor,
     geodesic_distance: Tensor
 ) -> None:
+    """
+    Saves a 3D mesh visualization to an HTML file, with vertex colors based on geodesic distances from a source vertex.
+    
+    Args:
+    - mesh_name (str): A name for the mesh being visualized.
+    - source_vert (int): The index of the source vertex to use for geodesic distance calculation.
+    - verts (Tensor): A tensor of shape (V, 3) containing the 3D coordinates of the mesh's vertices.
+    - faces (Tensor): A tensor of shape (F, 3) containing the indices of the vertices forming each face of the mesh.
+    - geodesic_distance (Tensor): A tensor of shape (V,) containing the geodesic distance from the source vertex to each vertex.
+    
+    Returns:
+    - None
+    
+    The function saves the visualization to an HTML file in the 'output/distance_field' directory.
+    """
     verts_array = verts.detach().cpu().numpy()
     faces_array = faces.detach().cpu().numpy()
     vert_features = geodesic_distance.sub(geodesic_distance.min(dim=0).values)
@@ -68,10 +87,24 @@ def save_gradient_viewer(
     faces: Tensor,
     verts_cmap: Tensor
 ) -> None:
+    """
+    Saves a 3D mesh visualization to an HTML file, with vertex colors based on a color map specified for each vertex.
+    
+    Args:
+    - mesh_name (str): A name for the mesh being visualized.
+    - source_vert (int): The index of the vertex to use as the source for the color map.
+    - verts (Tensor): A tensor of shape (N, 3) containing the 3D coordinates of the mesh's vertices.
+    - faces (Tensor): A tensor of shape (F, 3) containing the indices of the vertices forming each face of the mesh.
+    - verts_cmap (Tensor): A tensor of shape (N, C) containing the color map values for each vertex. C is the number of color channels.
+    
+    Returns:
+    - None
+    
+    The function saves the visualization to an HTML file in the 'output/gradient_field' directory.
+    """
     verts_array = verts.detach().cpu().numpy()
     faces_array = faces.detach().cpu().numpy()
-    verts_cmap = torch.nn.functional.normalize(verts_cmap, p=2, dim=-1)
-    verts_cmap = verts_cmap.add(1).div(2)
+    verts_cmap = torch.nn.functional.normalize(verts_cmap, p=2, dim=-1).add(1).div(2)
     verts_cmap_array = verts_cmap.detach().cpu().numpy()
     go.Figure(
         data=[
