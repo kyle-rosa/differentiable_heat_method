@@ -7,9 +7,9 @@ These gradients can be used to optimise the mesh geometry to achieve a desired d
 
 
 # Example Distance Fields
-![alt text](https://github.com/kyle-rosa/differentiable_geodesics/blob/main/gallery/example0.png?raw=true)
-![alt text](https://github.com/kyle-rosa/differentiable_geodesics/blob/main/gallery/example1.png?raw=true)
-![alt text](https://github.com/kyle-rosa/differentiable_geodesics/blob/main/gallery/example2.png?raw=true)
+![alt text](https://github.com/kyle-rosa/differentiable_heat_method/blob/main/gallery/example0.png?raw=true)
+![alt text](https://github.com/kyle-rosa/differentiable_heat_method/blob/main/gallery/example1.png?raw=true)
+![alt text](https://github.com/kyle-rosa/differentiable_heat_method/blob/main/gallery/example2.png?raw=true)
 
 
 # Acknowledgements
