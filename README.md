@@ -6,11 +6,14 @@ This allows one to calculate geodesic distances between vertices on the mesh, an
 These gradients can be used to optimise the mesh geometry to achieve a desired distance between specified vertices.
 
 
-## Example distance fields:
+# Example distance fields:
 ![alt text](https://github.com/kyle-rosa/differentiable_geodesics/blob/main/gallery/example0.png?raw=true)
 ![alt text](https://github.com/kyle-rosa/differentiable_geodesics/blob/main/gallery/example1.png?raw=true)
 ![alt text](https://github.com/kyle-rosa/differentiable_geodesics/blob/main/gallery/example2.png?raw=true)
 
 
-# Based on:
-- https://www.cs.cmu.edu/~kmcrane/Projects/HeatMethod/paper.pdf.
+# Acknowledgements:
+- Heat method reference: https://www.cs.cmu.edu/~kmcrane/Projects/HeatMethod/paper.pdf.
+- Meshes:
+    - Keenan Crane: https://www.cs.cmu.edu/~kmcrane/Projects/ModelRepository/.
+    - Thingi10K: https://ten-thousand-models.appspot.com/.

@@ -66,6 +66,8 @@ def save_distance_viewer(
     vert_features = geodesic_distance.sub(geodesic_distance.min(dim=0).values)
     vert_features = vert_features.div(vert_features.max(dim=0).values)
     vert_features_array = vert_features[..., 0].detach().cpu().numpy()
+    save_dir = Path() / 'output' / 'distance_fields'
+    os.makedirs(save_dir, exist_ok=True)
     go.Figure(
         data=[
             go.Mesh3d(
@@ -77,7 +79,7 @@ def save_distance_viewer(
         ]
     ).update_layout(
         scene=dict(xaxis_title='x', yaxis_title='-z', zaxis_title='y'),
-    ).write_html(Path() / 'output' / 'distance_field' / f'{mesh_name}-vertex_{source_vert}.html')
+    ).write_html(save_dir / f'{mesh_name}-vertex_{source_vert}.html')
 
 
 def save_gradient_viewer(
@@ -106,6 +108,8 @@ def save_gradient_viewer(
     faces_array = faces.detach().cpu().numpy()
     verts_cmap = torch.nn.functional.normalize(verts_cmap, p=2, dim=-1).add(1).div(2)
     verts_cmap_array = verts_cmap.detach().cpu().numpy()
+    save_dir = Path() / 'output' / 'gradient_fields'
+    os.makedirs(save_dir, exist_ok=True)
     go.Figure(
         data=[
             go.Mesh3d(
@@ -117,4 +121,4 @@ def save_gradient_viewer(
         ]
     ).update_layout(
         scene=dict(xaxis_title='x', yaxis_title='-z', zaxis_title='y'),
-    ).write_html(Path() / 'output' / 'gradient_field' / f'{mesh_name}-vertex_{source_vert}.html')
+    ).write_html(save_dir / f'{mesh_name}-vertex_{source_vert}.html')
