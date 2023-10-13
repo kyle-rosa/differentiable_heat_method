@@ -1,8 +1,8 @@
 # Differentiable Heat Method
 <p align="center">
-  <img src="gallery/example0.png?raw=true" width="300">
-  <img src="gallery/example1.png?raw=true" width="300">
-  <img src="gallery/example2.png?raw=true" width="300">
+  <img src="gallery/example0.png?raw=true" width="250">
+  <img src="gallery/example1.png?raw=true" width="250">
+  <img src="gallery/example2.png?raw=true" width="250">
 </p>
 
 ## The Heat Method
@@ -47,9 +47,9 @@ The distance function of a vertex can act as an analogue to radius in a polar co
 ## Example Distance Fields
 The images above show the geodesic distance fields from three different points on the same mesh. The chosen vertices are purple, and the mesh gets more yellow with distance.
 <p align="center">
-  <img src="gallery/example0.png?raw=true" width="300">
-  <img src="gallery/example1.png?raw=true" width="300">
-  <img src="gallery/example2.png?raw=true" width="300">
+  <img src="gallery/example0.png?raw=true" width="250">
+  <img src="gallery/example1.png?raw=true" width="250">
+  <img src="gallery/example2.png?raw=true" width="250">
 </p>
 
 # References
