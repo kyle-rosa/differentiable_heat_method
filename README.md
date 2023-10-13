@@ -1,4 +1,9 @@
 # Differentiable Heat Method
+<p align="center">
+  <img src="gallery/example0.png?raw=true" width="300">
+  <img src="gallery/example1.png?raw=true" width="300">
+  <img src="gallery/example2.png?raw=true" width="300">
+</p>
 
 ## The Heat Method
 The *heat method* is an algorithm for calculating the distance between two points in a curved space. This repository implements the heat method for triangulated meshes in three-dimensional space.
@@ -40,7 +45,7 @@ The distance function of a vertex can act as an analogue to radius in a polar co
 
 # Gallery
 ## Example Distance Fields
-The images below show the geodesic distance fields from three different points on the same mesh. The chosen vertices are purple, and the mesh gets more yellow with distance.
+The images above show the geodesic distance fields from three different points on the same mesh. The chosen vertices are purple, and the mesh gets more yellow with distance.
 <p align="center">
   <img src="gallery/example0.png?raw=true" width="300">
   <img src="gallery/example1.png?raw=true" width="300">
