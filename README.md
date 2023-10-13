@@ -16,7 +16,7 @@ To find the geodesic distance field $f$ for the vertex $v$, we perform the follo
 3. Integrate the divergence of the normalised gradient field to find the distance field.
 
 ### Intuitive Motivation
-The intuition here is that if we place a temperature impulse at $v$, then heat will flow away from $v$ along the shorted path. This tells us the _direction_ of geoedics away from $v$. The signed distance field increases at a constant rate of $1$ unit per unit as you move away from the chosen vertex, so its gradient must have length one. 
+The intuition here is that if we place a temperature impulse at $v$, then heat will flow away from $v$ along the shortest path. This tells us the _direction_ of geoedics away from $v$. The signed distance field increases at a constant rate of $1$ unit per unit as you move away from the chosen vertex, so its gradient must have length one. 
 
 Together, these imply that the distance field $f$ satisfies
 1. $f(v)=0$,
