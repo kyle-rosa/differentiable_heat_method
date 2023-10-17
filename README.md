@@ -41,23 +41,26 @@ In particular, other implementations I could find calculated certain geometric o
 ## Implementation Details
 
 ### Finite Element Discretisation
-The Laplacian operator plays an important role in the above calculation, and there are a variety of ways it can be discretised implemented. On $0$-forms, the Laplacian is given by $\Delta_0=\star_0^{-1}d^T_{1}\star_1d_0$. The differential operators are determined combinatorially based on the mesh, but our choice of discretisation does effect the components of the $\star_0$ and $\star_1$ operators.
+The Laplacian operator plays an important role in the above calculation, and there are a variety of ways it can be discretised. On $0$-forms, the Laplacian is given by $\Delta_0=\star_0^{-1}d^T_{1}\star_1d_0$. The differential operators are determined combinatorially based on the mesh, but we have some freedom in the $\star_0$ and $\star_1$ operators.
 
 The first of these, $\star_0$ is a mass matrix that maps vertices to the size of their dual cell. 
 
 <!-- $(\star_0\omega)(v^*) = \frac{\lvert v^*\rvert}{\lvert v\rvert}\omega(v) = A_v\omega(v),$ -->
 
-where $\lvert v \rvert = 1$ by convention, and $\lvert v^*\rvert$ is the area of its dual cell. We use mixed Voronoi-barycentric areas as described by [3] in the references below.
+<!-- where $\lvert v \rvert = 1$ by convention, and $\lvert v^*\rvert$ is the area of its dual cell. We use mixed Voronoi-barycentric areas as described by [3] in the references below. -->
 
-The $\star_1$ operator maps $1$-forms to $1$-forms, sending forms that measure circulation (defined on primal edges) to forms that measure flux (defined on dual edges). We can define $\star_1$ by its operation on $1$-forms. If $\omega$ is a $1$-form and $\sigma$ is an edge with corresponding dual edge $\sigma^*$.
+The $\star_1$ operator maps $1$-forms to $1$-forms, sending forms that measure circulation (defined on primal edges) to forms that measure flux (defined on dual edges). 
+<!-- We can define $\star_1$ by its operation on $1$-forms.  -->
+
+<!-- If $\omega$ is a $1$-form and $\sigma$ is an edge with corresponding dual edge $\sigma^*$ then -->
 
 <!-- $(\star_1\omega)(\sigma^*) = \frac{\lvert \sigma^*\rvert}{\lvert \sigma\rvert}\omega(\sigma)$, -->
 
-If we use the Voronoi dual cells, the end points of the dual edge $\sigma^\star$ are the circumcentres of the triangles either side of the primal edge, and we get the formula
+<!-- If we use the Voronoi dual cells, the end points of the dual edge $\sigma^\star$ are the circumcentres of the triangles either side of the primal edge, and we get the formula
 
 $\frac{\lvert \sigma^*\rvert}{\lvert \sigma\rvert} = \frac{1}{2}(\cot\alpha_{ij} + \cot \beta_{ij}),$
 
-where $\alpha_{ij}$ and $\beta_{ij}$ are the angles of the triangle corners opposite the edge $\sigma$.
+where $\alpha_{ij}$ and $\beta_{ij}$ are the angles of the triangle corners opposite the edge $\sigma$. -->
 
 
 ## Applications
