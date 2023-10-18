@@ -45,20 +45,20 @@ The Laplacian operator plays an important role in the above calculation, and the
 
 The first of these, $\star_0$ is a mass matrix that maps vertices to the size of their dual cell. 
 
-$(\star_0\omega)(v^*) = \frac{\lvert v^*\rvert}{\lvert v\rvert}\omega(v) = A_v\omega(v),$
+$(\star_0\omega)(v^\ast) = \frac{\lvert v^\ast \rvert}{\lvert v\rvert}\omega(v) = A_v\omega(v),$
 
 <!-- where $\lvert v \rvert = 1$ by convention, and $\lvert v^*\rvert$ is the area of its dual cell. We use mixed Voronoi-barycentric areas as described by [3] in the references below. -->
 
 The $\star_1$ operator maps $1$-forms to $1$-forms, sending forms that measure circulation (defined on primal edges) to forms that measure flux (defined on dual edges). 
 <!-- We can define $\star_1$ by its operation on $1$-forms.  -->
 
-If $\omega$ is a $1$-form and $\sigma$ is an edge with corresponding dual edge $\sigma^*$ then
+If $\omega$ is a $1$-form and $\sigma$ is an edge with corresponding dual edge $\sigma^\ast$ then
 
-$(\star_1 \omega)(\sigma^*) = \frac{\lvert \sigma^* \rvert}{\lvert \sigma\rvert}\omega(\sigma)$.
+$(\star_1 \omega)(\sigma^\ast) = \frac{\lvert \sigma^\ast \rvert}{\lvert \sigma\rvert}\omega(\sigma)$.
 
 If we use the Voronoi dual cells, the end points of the dual edge $\sigma^\star$ are the circumcentres of the triangles either side of the primal edge, and we get the formula
 
-$\frac{\lvert \sigma^*\rvert}{\lvert \sigma\rvert} = \frac{1}{2}(\cot\alpha_{ij} + \cot \beta_{ij}),$
+$\frac{\lvert \sigma^\ast \rvert}{\lvert \sigma\rvert} = \frac{1}{2}(\cot\alpha_{ij} + \cot \beta_{ij}),$
 
 where $\alpha_{ij}$ and $\beta_{ij}$ are the angles of the triangle corners opposite the edge $\sigma$.
 
